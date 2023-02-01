@@ -5,6 +5,7 @@ unit zfvMain;
 interface
 
 uses
+  LCLVersion,
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ComCtrls,
   ExtCtrls, Buttons,
   zipper,
@@ -35,7 +36,6 @@ type
     btnHexView: TSpeedButton;
     btnNormalView: TSpeedButton;
     Splitter1: TSplitter;
-    SynFreePascalSyn1: TSynFreePascalSyn;
     TextViewer: TSynEdit;
     procedure btnBrowseClick(Sender: TObject);
     procedure btnHexViewClick(Sender: TObject);
@@ -258,6 +258,9 @@ begin
   end;
 
   FMaxHistory := 24;
+  {$IF LCL_FullVersion >= 2020000}
+  cbFileName.TextHint := 'Name of the file to be opened';
+  {$ENDIF}
   cbFileName.DropDownCount := FMaxHistory;
   FHighlighters := TFPList.Create;
   TextViewer.Font.Name := GetFixedFontName;

@@ -37,7 +37,6 @@ object MainForm: TMainForm
       OnKeyPress = cbFileNameKeyPress
       OnSelect = cbFileNameSelect
       TabOrder = 0
-      TextHint = 'Name of the file to be opened'
     end
     object btnLoad: TButton
       AnchorSideTop.Control = pnlFileName
@@ -670,6 +669,7 @@ object MainForm: TMainForm
     Top = 72
   end
   object ImageList: TImageList
+    Scaled = True
     Left = 112
     Top = 152
     Bitmap = {
@@ -824,14 +824,5 @@ object MainForm: TMainForm
       A46BBFE0D747F07BBE2C3D49FC805DA5515D22A8EC14FE4F0ECF6FA01ECCFF00
       A51045E1
     }
-  end
-  object SynFreePascalSyn1: TSynFreePascalSyn
-    Enabled = False
-    CompilerMode = pcmObjFPC
-    NestedComments = True
-    TypeHelpers = False
-    StringMultilineMode = []
-    Left = 499
-    Top = 172
   end
 end
