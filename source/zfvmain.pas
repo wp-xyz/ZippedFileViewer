@@ -46,6 +46,7 @@ type
     procedure FormActivate(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure FormDropFiles(Sender: TObject; const FileNames: array of string);
     procedure lvFilesClick(Sender: TObject);
   private
     FUnzipper: TUnzipper;
@@ -277,6 +278,12 @@ begin
   FHighlighters.Free;
 end;
 
+procedure TMainForm.FormDropFiles(Sender: TObject;
+  const FileNames: array of string);
+begin
+  LoadFile(FileNames[0]);
+end;
+
 function TMainForm.GetIniName: String;
 begin
   Result := ChangeFileExt(Application.ExeName, '.ini');
@@ -324,6 +331,9 @@ begin
       cbFileName.Items.Delete(i);
     raise;
   end;
+
+  TextViewer.Lines.Clear;
+  FHexEditor.Clear;
 end;
 
 // Unzip clicked file to a stream as defined by CreateOutZipStreamHandler
@@ -541,22 +551,28 @@ begin
             L.Insert(i+1, sIndent + sWrap);
           if Length(s) > TextViewer.RightEdge then
           begin
-            p := Pos(' ', s);
-            if p > 0 then
+            p := 1;
+            while (p <= Length(s)) and (s[p] = ' ') do
+              inc(p);
+            while (p <= Length(s)) and (s[p] <> ' ') do
+              inc(p);
+            while (p <= Length(s)) and (s[p] = ' ') do
+              inc(p);
+            if p > 1 then
             begin
-              sWrap := Copy(s, p+1, MaxInt);
+              sWrap := copy(s, p, MaxInt);
               L.Insert(i+1, sIndent + sWrap);
               s := Copy(L[i], 1, p-1);
             end;
           end;
           L[i] := s;
         end;
-        TextViewer.Highlighter := RegisteredHighlighter(TSynXMLSyn);
         TextViewer.Lines.Assign(L);
       finally
         L.Free;
       end;
     end;
+    TextViewer.Highlighter := RegisteredHighlighter(TSynXMLSyn);
   finally
     stream.Free;
     doc.Free;

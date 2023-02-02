@@ -3,12 +3,14 @@ object MainForm: TMainForm
   Height = 619
   Top = 211
   Width = 1151
+  AllowDropFiles = True
   Caption = 'Zipped File Viewer'
   ClientHeight = 619
   ClientWidth = 1151
   OnActivate = FormActivate
   OnCreate = FormCreate
   OnDestroy = FormDestroy
+  OnDropFiles = FormDropFiles
   LCLVersion = '2.3.0.0'
   object pnlFileName: TPanel
     Left = 6
