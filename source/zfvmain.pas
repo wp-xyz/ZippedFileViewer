@@ -124,17 +124,8 @@ end;
 { TMainForm }
 
 procedure TMainForm.AddToHistory(const AFileName: String);
-var
-  i: Integer;
 begin
-  i := cbFileName.Items.IndexOf(AFileName);
-  if i <> -1 then
-    cbFileName.Items.Move(i, 0)
-  else
-    cbFileName.Items.Insert(0, AFileName);
-  cbFileName.Text := AFileName;
-  while (cbFileName.Items.Count > FMaxHistory) do
-    cbFileName.Items.Delete(cbFileName.Items.Count-1);
+  cbFileName.AddHistoryItem(AFileName, FMaxHistory, true, false);
 end;
 
 procedure TMainForm.btnBrowseClick(Sender: TObject);
