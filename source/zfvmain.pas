@@ -260,6 +260,9 @@ begin
   TextViewer.Font.Size := 9;
 
   ReadIni;
+
+  if ParamCount > 0 then
+    LoadFile(ParamStr(1));
 end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
