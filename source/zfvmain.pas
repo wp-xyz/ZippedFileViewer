@@ -13,7 +13,8 @@ uses
   SynEdit, SynEditHighlighter,
   SynHighlighterXML, SynHighlighterCss, SynHighlighterHTML, SynHighlighterJScript,
   SynHighlighterPAS, SynHighlighterLFM,
-  SynHighlighterJSON;
+  SynHighlighterJSON,
+  BGRABitmap, BGRABitmapTypes;
 
 type
 
@@ -22,25 +23,25 @@ type
   TMainForm = class(TForm)
     ApplicationProperties: TApplicationProperties;
     btnLoad: TButton;
+    btnExtractSelected: TButton;
     cbFileName: TComboBox;
     ImageList: TImageList;
     ImageViewer: TImage;
     lvFiles: TListView;
     MainPanel: TPanel;
-    Notebook: TNotebook;
-    pgHex: TPage;
-    pgImage: TPage;
-    pgText: TPage;
+    PageControl: TPageControl;
+    PaintBox: TPaintBox;
+    LeftPanel: TPanel;
     pnlFileName: TPanel;
     btnBrowse: TSpeedButton;
-    btnHexView: TSpeedButton;
-    btnNormalView: TSpeedButton;
     Splitter1: TSplitter;
+    pgText: TTabSheet;
+    pgHex: TTabSheet;
+    pgImage: TTabSheet;
     TextViewer: TSynEdit;
     procedure btnBrowseClick(Sender: TObject);
-    procedure btnHexViewClick(Sender: TObject);
     procedure btnLoadClick(Sender: TObject);
-    procedure btnNormalViewClick(Sender: TObject);
+    procedure btnExtractSelectedClick(Sender: TObject);
     procedure cbFileNameKeyPress(Sender: TObject; var Key: char);
     procedure cbFileNameSelect(Sender: TObject);
     procedure FormActivate(Sender: TObject);
@@ -48,20 +49,27 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure FormDropFiles(Sender: TObject; const FileNames: array of string);
     procedure lvFilesClick(Sender: TObject);
+    procedure PaintBoxPaint(Sender: TObject);
   private
     FUnzipper: TUnzipper;
     FMaxHistory: Integer;
     FHighlighters: TFPList;
     FHexEditor: TMPHexEditor;
-    FNormalPage: Integer;
+    FImage: TBGRABitmap;
+    FOutFileName: String;
     procedure AddToHistory(const AFileName: String);
-    procedure CreateOutZipStreamHandler(Sender: TObject; var AStream: TStream; AItem: TFullZipFileEntry);
-    procedure DoneOutZipStreamHandler(Sender: TObject; var AStream: TStream; AItem: TFullZipFileEntry);
+
+    procedure CreateOutZipViewerStreamHandler(Sender: TObject; var AStream: TStream; AItem: TFullZipFileEntry);
+    procedure DoneOutZipViewerStreamHandler(Sender: TObject; var AStream: TStream; AItem: TFullZipFileEntry);
+
+    procedure CreateOutZipFileStreamHandler(Sender: TObject; var AStream: TStream; AItem: TFullZipFileEntry);
+    procedure DoneOutZipFileStreamHandler(Sender: TObject; var AStream: TStream; AItem: TFullZipFileEntry);
 
     function RegisteredHighlighter(AClass: TSynCustomHighlighterClass): TSynCustomHighlighter;
 
+    procedure ClearImage;
     procedure LoadFile(const AFileName: String);
-    procedure ShowImage(AStream: TStream);
+    function ShowImage(AStream: TStream; AExtension: String): Boolean;
     procedure ShowText(AStream: TStream; AExtension: String);
     procedure ShowXML(AStream: TStream);
 
@@ -83,7 +91,8 @@ implementation
 uses
   StrUtils, LCLType, LCLIntf,
   IniFiles,
-  laz2_xmlread, laz2_xmlwrite, laz2_dom;
+  laz2_xmlread, laz2_xmlwrite, laz2_dom,
+  BGRASVG;
 
 const
   APP_NAME = 'Zipped File Viewer';
@@ -145,19 +154,34 @@ begin
     end;
 end;
 
-procedure TMainForm.btnHexViewClick(Sender: TObject);
-begin
-  Notebook.PageIndex := Notebook.IndexOf(pgHex);
-end;
-
 procedure TMainForm.btnLoadClick(Sender: TObject);
 begin
   LoadFile(cbFileName.Text);
 end;
 
-procedure TMainForm.btnNormalViewClick(Sender: TObject);
+procedure TMainForm.btnExtractSelectedClick(Sender: TObject);
+var
+  stream: TStream;
+  dlg: TSaveDialog;
+  fn: String;
 begin
-  Notebook.PageIndex := FNormalPage;
+  fn := lvFiles.Selected.Caption;
+
+  dlg := TSaveDialog.Create(nil);
+  try
+    dlg.Filter := 'All files|*.*;*';
+    dlg.Options := dlg.Options + [ofOverwritePrompt];
+    dlg.FileName := ExtractFileName(fn);
+    if dlg.Execute then
+    begin
+      FOutFilename := ExpandFileName(dlg.FileName);
+      FUnzipper.OnCreateStream := @CreateOutZipFileStreamHandler;
+      FUnzipper.OnDoneStream := @DoneOutZipFileStreamHandler;
+      FUnzipper.UnzipFile(fn);
+    end;
+  finally
+    dlg.Free;
+  end;
 end;
 
 procedure TMainForm.cbFileNameKeyPress(Sender: TObject; var Key: char);
@@ -171,20 +195,21 @@ begin
   LoadFile(cbFileName.Text);
 end;
 
-procedure TMainForm.FormActivate(Sender: TObject);
+procedure TMainForm.ClearImage;
 begin
-  btnBrowse.Constraints.MinWidth := btnBrowse.Height + 8;
+  FreeAndNil(FImage);
+  Paintbox.Invalidate;
 end;
 
 // Handler for unzipping file from archive: creates a stream for unzipped file.
-procedure TMainForm.CreateOutZipStreamHandler(Sender: TObject; var AStream: TStream;
+procedure TMainForm.CreateOutZipViewerStreamHandler(Sender: TObject; var AStream: TStream;
   AItem: TFullZipFileEntry);
 begin
   AStream := TMemorystream.Create;
 end;
 
 // Handler when unzipping is finished: Show xml stored in the unzipped stream
-procedure TMainForm.DoneOutZipStreamHandler(Sender: TObject; var AStream: TStream;
+procedure TMainForm.DoneOutZipViewerStreamHandler(Sender: TObject; var AStream: TStream;
   AItem: TFullZipFileEntry);
 var
   ext: String;
@@ -196,44 +221,51 @@ begin
   FHexEditor.LoadFromStream(AStream);
 
   // Try to load as xml
-  AStream.Position:=0;
   try
     ShowXML(AStream);
-    FNormalPage := Notebook.IndexOf(pgText);
-    if btnNormalView.Down then
-      Notebook.PageIndex := FNormalPage;
-    exit;
   except
-    TextViewer.Lines.Clear;
+    AStream.Position := 0;
+    ShowText(AStream, ext);
   end;
 
   // Try to load as image
-  AStream.Position := 0;
   try
-    ShowImage(AStream);
-    FNormalPage := Notebook.IndexOf(pgImage);
-    if btnNormalView.Down then
-      Notebook.PageIndex := FNormalPage;
-    exit;
+    pgImage.TabVisible := ShowImage(AStream, ext);
   except
-    ImageViewer.Picture.Clear;
+    pgImage.TabVisible := false;
   end;
-
-  // If all fails, load as text
-  AStream.Position := 0;
-  ShowText(AStream, ext);
-  FNormalPage := Notebook.IndexOf(pgText);
-  if btnNormalView.Down then
-    Notebook.PageIndex := FNormalPage;
+  if not pgImage.TabVisible then
+    ClearImage;
 
   // Destroy the stream created by CreateOutZipStreamHandler
   AStream.Free;
 end;
 
+// Handler for unzipping file from archive and saveing to file:
+// creates a stream for unzipped file.
+procedure TMainForm.CreateOutZipFileStreamHandler(Sender: TObject; var AStream: TStream;
+  AItem: TFullZipFileEntry);
+begin
+  AStream := TFileStream.Create(FOutFileName, fmCreate);
+end;
+
+procedure TMainForm.DoneOutZipFileStreamHandler(Sender: TObject; var AStream: TStream;
+  AItem: TFullZipFileEntry);
+begin
+  AStream.Free;
+end;
+
+procedure TMainForm.FormActivate(Sender: TObject);
+begin
+  btnBrowse.Constraints.MinWidth := btnBrowse.Height + 8;
+end;
+
 procedure TMainForm.FormCreate(Sender: TObject);
 begin
   Caption := APP_NAME;
-  Notebook.PageIndex := 0;
+  PageControl.ActivePageIndex := 0;
+
+  RegisterSvgFormat;
 
   FHexEditor := TMPHexEditor.Create(self);
   with FHexEditor do
@@ -270,6 +302,7 @@ begin
   WriteIni;
   FUnzipper.Free;
   FHighlighters.Free;
+  FImage.Free;
 end;
 
 procedure TMainForm.FormDropFiles(Sender: TObject;
@@ -328,6 +361,7 @@ begin
 
   TextViewer.Lines.Clear;
   FHexEditor.Clear;
+  ClearImage;
 end;
 
 // Unzip clicked file to a stream as defined by CreateOutZipStreamHandler
@@ -338,10 +372,21 @@ begin
   if lvFiles.Selected = nil then
     exit;
 
-  FUnzipper.OnCreateStream := @CreateOutZipStreamHandler;
-  FUnzipper.OnDoneStream := @DoneOutZipStreamHandler;
+  FUnzipper.OnCreateStream := @CreateOutZipViewerStreamHandler;
+  FUnzipper.OnDoneStream := @DoneOutZipViewerStreamHandler;
   fn := lvFiles.Selected.Caption;
   FUnzipper.UnzipFile(fn);
+end;
+
+procedure TMainForm.PaintBoxPaint(Sender: TObject);
+var
+  x, y: Integer;
+begin
+  if FImage = nil then
+    exit;
+  x := (Paintbox.Width - FImage.Width) div 2;
+  y := (Paintbox.Height - FImage.Height) div 2;
+  FImage.Draw(Paintbox.Canvas, x, y, false);
 end;
 
 procedure TMainForm.ReadIni;
@@ -368,7 +413,7 @@ begin
     SetBounds(L, T, W, H);
     WindowState := wsNormal;
     WindowState := TWindowState(ini.ReadInteger('MainForm', 'WindowState', 0));
-    lvFiles.Width := ini.ReadInteger('MainForm', 'Splitter', lvFiles.Width);
+    LeftPanel.Width := ini.ReadInteger('MainForm', 'Splitter', LeftPanel.Width);
 
     FMaxHistory := ini.ReadInteger('History', 'MaxCount', FMaxHistory);
     list := TStringList.Create;
@@ -441,15 +486,55 @@ begin
   FHighlighters.Add(Result);
 end;
 
-procedure TMainForm.ShowImage(AStream: TStream);
+function TMainForm.ShowImage(AStream: TStream; AExtension: String): Boolean;
+var
+  img: TBgraBitmap;
+  x, y: Integer;
+  bmp: TBitmap;
 begin
-  ImageViewer.Picture.LoadFromStream(AStream);
+  Result := false;
+
+  if DetectFileFormat(AStream, AExtension) = ifUnknown then
+    exit;
+
+  AStream.Position := 0;
+  FImage.Free;
+  FImage := TBGRABitmap.Create(AStream);
+  Paintbox.Invalidate;
+  Result := true;
+
+  exit;
+
+  img := TBGRABitmap.Create(AStream);
+  try
+    x := (Paintbox.Width - img.Width) div 2;
+    y := (Paintbox.Height - img.Height) div 2;
+    if x < 0 then x := 0;
+    if y < 0 then y := 0;
+    img.Draw(Paintbox.Canvas, x, y, false);
+    Result := true;
+    (*
+    bmp := TBitmap.Create;
+    try
+      bmp.PixelFormat := pf32Bit;
+      bmp.SetSize(img.Width, img.Height);
+      img.Draw(bmp.Canvas, 0, 0, false);
+      ImageViewer.Picture.Assign(bmp);
+      Result := true;
+    finally
+      bmp.Free;
+    end;
+    *)
+  finally
+    img.Free;
+  end;
 end;
 
 procedure TMainForm.ShowText(AStream: TStream; AExtension: String);
 var
   HighlighterClass: TSynCustomHighlighterClass;
 begin
+  AStream.Position := 0;
   case AExtension of
     '.css':
       HighlighterClass := TSynCssSyn;
@@ -488,6 +573,7 @@ var
   s, sIndent, sWrap, sTmp, sNew: String;
   i, j, p, nSpc: Integer;
 begin
+  AStream.Position := 0;
   ReadXMLFile(doc, AStream);
 
   // Create nice formatting for xml
@@ -585,7 +671,7 @@ begin
     ini.WriteInteger('MainForm', 'Width', Width);
     ini.WriteInteger('MainForm', 'Height', Height);
     ini.WriteInteger('Position', 'WindowState', Integer(WindowState));
-    ini.WriteInteger('MainForm', 'Splitter', lvFiles.Width);
+    ini.WriteInteger('MainForm', 'Splitter', LeftPanel.Width);
 
     ini.WriteInteger('History', 'MaxCount', FMaxHistory);
     ini.EraseSection('History');

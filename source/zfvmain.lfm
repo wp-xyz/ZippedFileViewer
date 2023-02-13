@@ -32,7 +32,7 @@ object MainForm: TMainForm
       Left = 0
       Height = 23
       Top = 2
-      Width = 950
+      Width = 1055
       Anchors = [akTop, akLeft, akRight]
       DropDownCount = 24
       ItemHeight = 15
@@ -43,14 +43,15 @@ object MainForm: TMainForm
     object btnLoad: TButton
       AnchorSideTop.Control = pnlFileName
       AnchorSideTop.Side = asrCenter
-      AnchorSideRight.Control = btnNormalView
-      Left = 977
+      AnchorSideRight.Control = pnlFileName
+      AnchorSideRight.Side = asrBottom
+      Left = 1082
       Height = 25
       Top = 1
       Width = 55
       Anchors = [akTop, akRight]
       AutoSize = True
-      BorderSpacing.Right = 12
+      BorderSpacing.Right = 2
       Caption = 'Open'
       OnClick = btnLoadClick
       TabOrder = 1
@@ -60,7 +61,7 @@ object MainForm: TMainForm
       AnchorSideRight.Control = btnLoad
       AnchorSideBottom.Control = btnLoad
       AnchorSideBottom.Side = asrBottom
-      Left = 952
+      Left = 1057
       Height = 25
       Top = 1
       Width = 23
@@ -70,39 +71,6 @@ object MainForm: TMainForm
       Caption = '...'
       Spacing = -1
       OnClick = btnBrowseClick
-    end
-    object btnHexView: TSpeedButton
-      AnchorSideTop.Control = btnLoad
-      AnchorSideRight.Control = pnlFileName
-      AnchorSideRight.Side = asrBottom
-      AnchorSideBottom.Control = btnLoad
-      AnchorSideBottom.Side = asrBottom
-      Left = 1102
-      Height = 25
-      Top = 1
-      Width = 37
-      Anchors = [akTop, akRight, akBottom]
-      AutoSize = True
-      BorderSpacing.Left = 2
-      Caption = '  Hex  '
-      GroupIndex = 1
-      OnClick = btnHexViewClick
-    end
-    object btnNormalView: TSpeedButton
-      AnchorSideTop.Control = btnLoad
-      AnchorSideRight.Control = btnHexView
-      AnchorSideBottom.Control = btnLoad
-      AnchorSideBottom.Side = asrBottom
-      Left = 1044
-      Height = 25
-      Top = 1
-      Width = 56
-      Anchors = [akTop, akRight, akBottom]
-      AutoSize = True
-      Caption = '  Normal  '
-      Down = True
-      GroupIndex = 1
-      OnClick = btnNormalViewClick
     end
   end
   object MainPanel: TPanel
@@ -116,45 +84,30 @@ object MainForm: TMainForm
     ClientHeight = 575
     ClientWidth = 1139
     TabOrder = 1
-    object lvFiles: TListView
-      Left = 0
-      Height = 575
-      Top = 0
-      Width = 259
-      Align = alLeft
-      AutoWidthLastColumn = True
-      Columns = <      
-        item
-          Caption = 'File name'
-          Width = 255
-        end>
-      HideSelection = False
-      ReadOnly = True
-      SmallImages = ImageList
-      TabOrder = 0
-      ViewStyle = vsReport
-      OnClick = lvFilesClick
-    end
     object Splitter1: TSplitter
-      Left = 259
+      Left = 170
       Height = 575
       Top = 0
       Width = 5
     end
-    object Notebook: TNotebook
-      Left = 264
+    object PageControl: TPageControl
+      Left = 175
       Height = 575
       Top = 0
-      Width = 875
-      PageIndex = 0
+      Width = 964
+      ActivePage = pgImage
       Align = alClient
-      TabOrder = 2
-      object pgText: TPage
+      TabIndex = 2
+      TabOrder = 1
+      object pgText: TTabSheet
+        Caption = 'Text'
+        ClientHeight = 547
+        ClientWidth = 956
         inline TextViewer: TSynEdit
           Left = 0
-          Height = 575
+          Height = 547
           Top = 0
-          Width = 875
+          Width = 956
           Align = alClient
           Font.Height = -12
           Font.Name = 'Courier New'
@@ -648,27 +601,88 @@ object MainForm: TMainForm
           end
         end
       end
-      object pgImage: TPage
+      object pgHex: TTabSheet
+        Caption = 'Hex'
+      end
+      object pgImage: TTabSheet
+        Caption = 'Image'
+        ClientHeight = 547
+        ClientWidth = 956
         object ImageViewer: TImage
-          Left = 0
-          Height = 575
-          Top = 0
-          Width = 875
-          Align = alClient
+          Left = 480
+          Height = 327
+          Top = 248
+          Width = 395
           Center = True
           Proportional = True
           Stretch = True
           StretchOutEnabled = False
         end
+        object PaintBox: TPaintBox
+          Left = 0
+          Height = 547
+          Top = 0
+          Width = 956
+          Align = alClient
+          OnPaint = PaintBoxPaint
+        end
       end
-      object pgHex: TPage
+    end
+    object LeftPanel: TPanel
+      Left = 0
+      Height = 575
+      Top = 0
+      Width = 170
+      Align = alLeft
+      BevelOuter = bvNone
+      ClientHeight = 575
+      ClientWidth = 170
+      TabOrder = 2
+      object lvFiles: TListView
+        AnchorSideLeft.Control = LeftPanel
+        AnchorSideTop.Control = LeftPanel
+        AnchorSideRight.Control = LeftPanel
+        AnchorSideRight.Side = asrBottom
+        AnchorSideBottom.Control = btnExtractSelected
+        Left = 0
+        Height = 544
+        Top = 0
+        Width = 170
+        Anchors = [akTop, akLeft, akRight, akBottom]
+        AutoWidthLastColumn = True
+        Columns = <        
+          item
+            Caption = 'File name'
+            Width = 166
+          end>
+        HideSelection = False
+        ReadOnly = True
+        SmallImages = ImageList
+        TabOrder = 0
+        ViewStyle = vsReport
+        OnClick = lvFilesClick
+      end
+      object btnExtractSelected: TButton
+        AnchorSideLeft.Control = LeftPanel
+        AnchorSideBottom.Control = LeftPanel
+        AnchorSideBottom.Side = asrBottom
+        Left = 0
+        Height = 25
+        Top = 550
+        Width = 117
+        Anchors = [akLeft, akBottom]
+        AutoSize = True
+        BorderSpacing.Top = 6
+        Caption = 'Extract selected...'
+        OnClick = btnExtractSelectedClick
+        TabOrder = 1
       end
     end
   end
   object ApplicationProperties: TApplicationProperties
     ExceptionDialog = aedOkMessageBox
     Left = 600
-    Top = 72
+    Top = 104
   end
   object ImageList: TImageList
     Scaled = True
