@@ -7,7 +7,7 @@ interface
 uses
   LCLVersion,
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ComCtrls,
-  ExtCtrls, Buttons,
+  ExtCtrls, Buttons, Menus, ActnList,
   zipper,
   MPHexEditor,
   SynEdit, SynEditHighlighter,
@@ -21,27 +21,31 @@ type
   { TMainForm }
 
   TMainForm = class(TForm)
+    acExtractSelected: TAction;
+    ActionList: TActionList;
     ApplicationProperties: TApplicationProperties;
     btnLoad: TButton;
     btnExtractSelected: TButton;
     cbFileName: TComboBox;
     ImageList: TImageList;
-    ImageViewer: TImage;
     lvFiles: TListView;
     MainPanel: TPanel;
+    MenuItem1: TMenuItem;
     PageControl: TPageControl;
     PaintBox: TPaintBox;
     LeftPanel: TPanel;
     pnlFileName: TPanel;
     btnBrowse: TSpeedButton;
+    FilesPopupMenu: TPopupMenu;
     Splitter1: TSplitter;
     pgText: TTabSheet;
     pgHex: TTabSheet;
     pgImage: TTabSheet;
     TextViewer: TSynEdit;
+    procedure acExtractSelectedExecute(Sender: TObject);
+    procedure acExtractSelectedUpdate(Sender: TObject);
     procedure btnBrowseClick(Sender: TObject);
     procedure btnLoadClick(Sender: TObject);
-    procedure btnExtractSelectedClick(Sender: TObject);
     procedure cbFileNameKeyPress(Sender: TObject; var Key: char);
     procedure cbFileNameSelect(Sender: TObject);
     procedure FormActivate(Sender: TObject);
@@ -154,17 +158,14 @@ begin
     end;
 end;
 
-procedure TMainForm.btnLoadClick(Sender: TObject);
-begin
-  LoadFile(cbFileName.Text);
-end;
-
-procedure TMainForm.btnExtractSelectedClick(Sender: TObject);
+procedure TMainForm.acExtractSelectedExecute(Sender: TObject);
 var
-  stream: TStream;
   dlg: TSaveDialog;
   fn: String;
 begin
+  if lvFiles.Selected = nil then
+    exit;
+
   fn := lvFiles.Selected.Caption;
 
   dlg := TSaveDialog.Create(nil);
@@ -184,6 +185,16 @@ begin
   end;
 end;
 
+procedure TMainForm.acExtractSelectedUpdate(Sender: TObject);
+begin
+  acExtractSelected.Enabled := lvFiles.Selected <> nil;
+end;
+
+procedure TMainForm.btnLoadClick(Sender: TObject);
+begin
+  LoadFile(cbFileName.Text);
+end;
+
 procedure TMainForm.cbFileNameKeyPress(Sender: TObject; var Key: char);
 begin
   if Key = #13 then
@@ -201,14 +212,16 @@ begin
   Paintbox.Invalidate;
 end;
 
-// Handler for unzipping file from archive: creates a stream for unzipped file.
+// Handler for unzipping file from archive for viewer:
+// creates a stream for unzipped file.
 procedure TMainForm.CreateOutZipViewerStreamHandler(Sender: TObject; var AStream: TStream;
   AItem: TFullZipFileEntry);
 begin
   AStream := TMemorystream.Create;
 end;
 
-// Handler when unzipping is finished: Show xml stored in the unzipped stream
+// Handler when unzipping for viewer is finished:
+// Show xml stored in the unzipped stream
 procedure TMainForm.DoneOutZipViewerStreamHandler(Sender: TObject; var AStream: TStream;
   AItem: TFullZipFileEntry);
 var
@@ -241,7 +254,7 @@ begin
   AStream.Free;
 end;
 
-// Handler for unzipping file from archive and saveing to file:
+// Handler for unzipping file from archive and saving to file:
 // creates a stream for unzipped file.
 procedure TMainForm.CreateOutZipFileStreamHandler(Sender: TObject; var AStream: TStream;
   AItem: TFullZipFileEntry);

@@ -608,16 +608,6 @@ object MainForm: TMainForm
         Caption = 'Image'
         ClientHeight = 547
         ClientWidth = 956
-        object ImageViewer: TImage
-          Left = 480
-          Height = 327
-          Top = 248
-          Width = 395
-          Center = True
-          Proportional = True
-          Stretch = True
-          StretchOutEnabled = False
-        end
         object PaintBox: TPaintBox
           Left = 0
           Height = 547
@@ -656,6 +646,7 @@ object MainForm: TMainForm
             Width = 166
           end>
         HideSelection = False
+        PopupMenu = FilesPopupMenu
         ReadOnly = True
         SmallImages = ImageList
         TabOrder = 0
@@ -670,11 +661,10 @@ object MainForm: TMainForm
         Height = 25
         Top = 550
         Width = 117
+        Action = acExtractSelected
         Anchors = [akLeft, akBottom]
         AutoSize = True
         BorderSpacing.Top = 6
-        Caption = 'Extract selected...'
-        OnClick = btnExtractSelectedClick
         TabOrder = 1
       end
     end
@@ -686,8 +676,8 @@ object MainForm: TMainForm
   end
   object ImageList: TImageList
     Scaled = True
-    Left = 112
-    Top = 152
+    Left = 72
+    Top = 112
     Bitmap = {
       4C7A030000001000000010000000A00300000000000078DAED94FB6F93551C87
       45FF05231263F84905236A428C09A29904E22D0A0B996678898A04958B28734A
@@ -840,5 +830,22 @@ object MainForm: TMainForm
       A46BBFE0D747F07BBE2C3D49FC805DA5515D22A8EC14FE4F0ECF6FA01ECCFF00
       A51045E1
     }
+  end
+  object FilesPopupMenu: TPopupMenu
+    Left = 72
+    Top = 200
+    object MenuItem1: TMenuItem
+      Action = acExtractSelected
+    end
+  end
+  object ActionList: TActionList
+    Left = 72
+    Top = 288
+    object acExtractSelected: TAction
+      Caption = 'Extract selected...'
+      Hint = 'Extract selected item to file'
+      OnExecute = acExtractSelectedExecute
+      OnUpdate = acExtractSelectedUpdate
+    end
   end
 end
