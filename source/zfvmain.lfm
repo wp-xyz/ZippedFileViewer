@@ -610,11 +610,50 @@ object MainForm: TMainForm
         ClientWidth = 956
         object PaintBox: TPaintBox
           Left = 0
-          Height = 547
+          Height = 520
           Top = 0
           Width = 956
           Align = alClient
           OnPaint = PaintBoxPaint
+        end
+        object Panel1: TPanel
+          Left = 0
+          Height = 27
+          Top = 520
+          Width = 956
+          Align = alBottom
+          BevelOuter = bvNone
+          ClientHeight = 27
+          ClientWidth = 956
+          TabOrder = 0
+          object rbOrigSize: TRadioButton
+            AnchorSideLeft.Control = Panel1
+            AnchorSideTop.Control = Panel1
+            AnchorSideTop.Side = asrCenter
+            Left = 0
+            Height = 19
+            Top = 4
+            Width = 82
+            Caption = 'Original size'
+            Checked = True
+            OnChange = rbSizeChange
+            TabOrder = 1
+            TabStop = True
+          end
+          object rbScaledSize: TRadioButton
+            AnchorSideLeft.Control = rbOrigSize
+            AnchorSideLeft.Side = asrBottom
+            AnchorSideTop.Control = Panel1
+            AnchorSideTop.Side = asrCenter
+            Left = 94
+            Height = 19
+            Top = 4
+            Width = 74
+            BorderSpacing.Left = 12
+            Caption = 'Scaled size'
+            OnChange = rbSizeChange
+            TabOrder = 0
+          end
         end
       end
     end

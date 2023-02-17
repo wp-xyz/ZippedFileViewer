@@ -14,7 +14,7 @@ uses
   SynHighlighterXML, SynHighlighterCss, SynHighlighterHTML, SynHighlighterJScript,
   SynHighlighterPAS, SynHighlighterLFM,
   SynHighlighterJSON,
-  BGRABitmap, BGRABitmapTypes;
+  BGRABitmap, BGRABitmapTypes, BGRASVG;
 
 type
 
@@ -34,9 +34,12 @@ type
     PageControl: TPageControl;
     PaintBox: TPaintBox;
     LeftPanel: TPanel;
+    Panel1: TPanel;
     pnlFileName: TPanel;
     btnBrowse: TSpeedButton;
     FilesPopupMenu: TPopupMenu;
+    rbOrigSize: TRadioButton;
+    rbScaledSize: TRadioButton;
     Splitter1: TSplitter;
     pgText: TTabSheet;
     pgHex: TTabSheet;
@@ -54,12 +57,14 @@ type
     procedure FormDropFiles(Sender: TObject; const FileNames: array of string);
     procedure lvFilesClick(Sender: TObject);
     procedure PaintBoxPaint(Sender: TObject);
+    procedure rbSizeChange(Sender: TObject);
   private
     FUnzipper: TUnzipper;
     FMaxHistory: Integer;
     FHighlighters: TFPList;
     FHexEditor: TMPHexEditor;
     FImage: TBGRABitmap;
+    FSVG: TBGRASvg;
     FOutFileName: String;
     procedure AddToHistory(const AFileName: String);
 
@@ -95,8 +100,7 @@ implementation
 uses
   StrUtils, LCLType, LCLIntf,
   IniFiles,
-  laz2_xmlread, laz2_xmlwrite, laz2_dom,
-  BGRASVG;
+  laz2_xmlread, laz2_xmlwrite, laz2_dom;
 
 const
   APP_NAME = 'Zipped File Viewer';
@@ -316,6 +320,7 @@ begin
   FUnzipper.Free;
   FHighlighters.Free;
   FImage.Free;
+  FSVG.Free;
 end;
 
 procedure TMainForm.FormDropFiles(Sender: TObject;
@@ -394,12 +399,72 @@ end;
 procedure TMainForm.PaintBoxPaint(Sender: TObject);
 var
   x, y: Integer;
+  stretched: TBGRABitmap;
+  imgAspectRatio, paintboxAspectRatio: Double;
+  factor: Double;
+  w, h: Integer;
+  img: TBGRABitmap;
 begin
+  Paintbox.Canvas.Brush.color := Paintbox.Color;
+  Paintbox.Canvas.FillRect(0, 0, Paintbox.Width, Paintbox.Height);
+
   if FImage = nil then
     exit;
-  x := (Paintbox.Width - FImage.Width) div 2;
-  y := (Paintbox.Height - FImage.Height) div 2;
-  FImage.Draw(Paintbox.Canvas, x, y, false);
+
+  if FSVG <> nil then
+  begin
+    if rbOrigSize.Checked then
+    begin
+      w := round(FSVG.WidthAsPixel);
+      h := round(FSVG.HeightAsPixel);
+    end else
+    begin
+      w := Paintbox.Width;
+      h := Paintbox.Height;
+    end;
+    img := TBGRABitmap.Create(w, h);
+    try
+      FSVG.StretchDraw(img.Canvas2D, taCenter, tlCenter, 0, 0, w, h, false);
+      x := (Paintbox.Width - w) div 2;
+      if x < 0 then x := 0;
+      y := (Paintbox.Height - h) div 2;
+      if y < 0 then y := 0;
+      img.Draw(Paintbox.Canvas, x, y, false);
+    finally
+      img.Free;
+    end;
+  end else
+  begin
+    if rbOrigSize.checked then
+    begin
+      x := (Paintbox.Width - FImage.Width) div 2;
+      y := (Paintbox.Height - FImage.Height) div 2;
+      FImage.Draw(Paintbox.Canvas, x, y, false);
+    end else
+    begin
+      imgAspectRatio := FImage.Height / FImage.Width;
+      paintboxAspectRatio := Paintbox.Height / Paintbox.Width;
+      if imgAspectRatio > paintboxAspectRatio then
+        factor := Paintbox.Height / FImage.Height
+      else
+        factor := Paintbox.Width / FImage.Width;
+      w := round(FImage.Width * factor);
+      h := round(FImage.Height * factor);
+      x := (Paintbox.Width - w) div 2;
+      y := (Paintbox.Height - h) div 2;
+      stretched := FImage.Resample(w, h) as TBGRABitmap;
+      try
+        stretched.Draw(Paintbox.Canvas, x, y, false);
+      finally;
+        stretched.Free;
+      end;
+    end;
+  end;
+end;
+
+procedure TMainForm.rbSizeChange(Sender: TObject);
+begin
+  Paintbox.Invalidate;
 end;
 
 procedure TMainForm.ReadIni;
@@ -501,46 +566,25 @@ end;
 
 function TMainForm.ShowImage(AStream: TStream; AExtension: String): Boolean;
 var
-  img: TBgraBitmap;
   x, y: Integer;
-  bmp: TBitmap;
 begin
   Result := false;
+
+  FreeAndNil(FImage);
+  FreeAndNil(FSVG);
 
   if DetectFileFormat(AStream, AExtension) = ifUnknown then
     exit;
 
   AStream.Position := 0;
-  FImage.Free;
-  FImage := TBGRABitmap.Create(AStream);
+  if SameText(AExtension, '.svg') then
+  begin
+    FImage := TBGRABitmap.Create(Paintbox.Width, Paintbox.Height);
+    FSVG := TBGRASVG.Create(AStream);
+  end else
+    FImage := TBGRABitmap.Create(AStream);
   Paintbox.Invalidate;
   Result := true;
-
-  exit;
-
-  img := TBGRABitmap.Create(AStream);
-  try
-    x := (Paintbox.Width - img.Width) div 2;
-    y := (Paintbox.Height - img.Height) div 2;
-    if x < 0 then x := 0;
-    if y < 0 then y := 0;
-    img.Draw(Paintbox.Canvas, x, y, false);
-    Result := true;
-    (*
-    bmp := TBitmap.Create;
-    try
-      bmp.PixelFormat := pf32Bit;
-      bmp.SetSize(img.Width, img.Height);
-      img.Draw(bmp.Canvas, 0, 0, false);
-      ImageViewer.Picture.Assign(bmp);
-      Result := true;
-    finally
-      bmp.Free;
-    end;
-    *)
-  finally
-    img.Free;
-  end;
 end;
 
 procedure TMainForm.ShowText(AStream: TStream; AExtension: String);
