@@ -72,6 +72,7 @@ type
     {$IFDEF ABBREVIA}
     FUnzipper: TAbUnzipper;
     {$ENDIF}
+    FActivated: Boolean;
     FMaxHistory: Integer;
     FHighlighters: TFPList;
     FHexEditor: TMPHexEditor;
@@ -344,7 +345,12 @@ end;
 
 procedure TMainForm.FormActivate(Sender: TObject);
 begin
-  btnBrowse.Constraints.MinWidth := btnBrowse.Height + 4;
+  if not FActivated then
+  begin
+    FActivated := true;
+    LeftPanel.Constraints.MinWidth := btnInfo.Left + btnInfo.Width;
+    btnBrowse.Constraints.MinWidth := btnBrowse.Height + 4;
+  end;
 end;
 
 procedure TMainForm.FormCreate(Sender: TObject);

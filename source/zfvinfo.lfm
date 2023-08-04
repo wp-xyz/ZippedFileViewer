@@ -31,7 +31,7 @@ object InfoForm: TInfoForm
     Top = 6
     Width = 475
     Align = alClient
-    AlternateColor = 16316664
+    AlternateColor = 16579836
     BorderSpacing.Around = 6
     DefaultColWidth = 200
     FixedCols = 0

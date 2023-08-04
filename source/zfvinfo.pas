@@ -173,7 +173,6 @@ begin
     ValueList.InsertRow('  UTF8', FEntry.UTF8ArchiveFileName, true);
     ValueList.InsertRow('Disk File Name', FEntry.DiskFileName, true);
     ValueList.InsertRow('  UTF8', FEntry.UTF8DiskFileName, true);
-    ValueList.InsertRow('', '', true);
     ValueList.InsertRow('Date/Time', DateTimeToStr(FEntry.DateTime), true);
     ValueList.InsertRow('Size', Format('%.0n Bytes', [1.0*FEntry.Size]), true);
     ValueList.InsertRow('Compressed Size', Format('%.0n Bytes', [1.0*FEntry.CompressedSize]), true);
@@ -181,7 +180,6 @@ begin
       ValueList.InsertRow('Compression Ratio', FormatFloat('0%', (1.0-FEntry.CompressedSize/FEntry.Size)*100), true);
     ValueList.InsertRow('Compression Method', CompressionMethodToStr(FEntry.CompressMethod), true);
     ValueList.InsertRow('Compression Level', GetEnumName(TypeInfo(TCompressionLevel), Integer(FEntry.CompressionLevel)), true);
-    ValueList.InsertRow('', '', true);
     ValueList.InsertRow('OS', OSToStr(FEntry.OS), true);
     ValueList.InsertRow('Attributes', AttributesToStr(FEntry.Attributes), true);
     ValueList.InsertRow('Bit Flags', BitFlagsToStr(FEntry.BitFlags), true);
@@ -194,9 +192,8 @@ begin
     ValueList.InsertRow('Raw File Name', FEntry.RawFileName, true);
     ValueList.InsertRow('Stored Path', FEntry.StoredPath, true);
     ValueList.InsertRow('Last Modification Date/Time', DateTimeToStr(FEntry.LastModTimeAsDateTime), true);
-    ValueList.InsertRow('Encrypted?', BoolToStr(FEntry.IsEncrypted, true), true);
-    ValueList.InsertRow('Directory?', BoolToStr(FEntry.IsDirectory, true), true);
-
+    ValueList.InsertRow('Item is encrypted', BoolToStr(FEntry.IsEncrypted, true), true);
+    ValueList.InsertRow('Item is directory', BoolToStr(FEntry.IsDirectory, true), true);
     ValueList.InsertRow('Compression Method', GetEnumName(TypeInfo(TAbZipCompressionMethod), Integer(FEntry.CompressionMethod)), true);
     ValueList.InsertRow('Uncompressed Size', Format('%.0n Bytes', [1.0*FEntry.UncompressedSize]), true);
     ValueList.InsertRow('Compressed Size', Format('%.0n Bytes', [1.0*FEntry.CompressedSize]), true);

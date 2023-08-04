@@ -87,10 +87,11 @@ object MainForm: TMainForm
     ClientWidth = 1139
     TabOrder = 1
     object Splitter1: TSplitter
-      Left = 185
+      Left = 187
       Height = 575
       Top = 0
-      Width = 5
+      Width = 3
+      ResizeStyle = rsPattern
     end
     object PageControl: TPageControl
       Left = 190
@@ -665,6 +666,7 @@ object MainForm: TMainForm
       Top = 0
       Width = 185
       Align = alLeft
+      BorderSpacing.Right = 2
       BevelOuter = bvNone
       ClientHeight = 575
       ClientWidth = 185
