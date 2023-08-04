@@ -11,7 +11,7 @@ object MainForm: TMainForm
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnDropFiles = FormDropFiles
-  LCLVersion = '2.3.0.0'
+  LCLVersion = '3.99.0.0'
   object pnlFileName: TPanel
     Left = 6
     Height = 26
@@ -32,7 +32,7 @@ object MainForm: TMainForm
       Left = 0
       Height = 23
       Top = 2
-      Width = 1055
+      Width = 1065
       Anchors = [akTop, akLeft, akRight]
       DropDownCount = 24
       ItemHeight = 15
@@ -61,14 +61,16 @@ object MainForm: TMainForm
       AnchorSideRight.Control = btnLoad
       AnchorSideBottom.Control = btnLoad
       AnchorSideBottom.Side = asrBottom
-      Left = 1057
+      Left = 1067
       Height = 25
       Top = 1
-      Width = 23
+      Width = 13
       Anchors = [akTop, akRight, akBottom]
+      AutoSize = True
       BorderSpacing.Left = 2
       BorderSpacing.Right = 2
       Caption = '...'
+      Layout = blGlyphTop
       Spacing = -1
       OnClick = btnBrowseClick
     end
@@ -85,16 +87,16 @@ object MainForm: TMainForm
     ClientWidth = 1139
     TabOrder = 1
     object Splitter1: TSplitter
-      Left = 170
+      Left = 185
       Height = 575
       Top = 0
       Width = 5
     end
     object PageControl: TPageControl
-      Left = 175
+      Left = 190
       Height = 575
       Top = 0
-      Width = 964
+      Width = 949
       ActivePage = pgImage
       Align = alClient
       TabIndex = 2
@@ -102,12 +104,12 @@ object MainForm: TMainForm
       object pgText: TTabSheet
         Caption = 'Text'
         ClientHeight = 547
-        ClientWidth = 956
+        ClientWidth = 941
         inline TextViewer: TSynEdit
           Left = 0
           Height = 547
           Top = 0
-          Width = 956
+          Width = 941
           Align = alClient
           Font.Height = -12
           Font.Name = 'Courier New'
@@ -607,12 +609,12 @@ object MainForm: TMainForm
       object pgImage: TTabSheet
         Caption = 'Image'
         ClientHeight = 547
-        ClientWidth = 956
+        ClientWidth = 941
         object PaintBox: TPaintBox
           Left = 0
           Height = 520
           Top = 0
-          Width = 956
+          Width = 941
           Align = alClient
           OnPaint = PaintBoxPaint
         end
@@ -620,11 +622,11 @@ object MainForm: TMainForm
           Left = 0
           Height = 27
           Top = 520
-          Width = 956
+          Width = 941
           Align = alBottom
           BevelOuter = bvNone
           ClientHeight = 27
-          ClientWidth = 956
+          ClientWidth = 941
           TabOrder = 0
           object rbOrigSize: TRadioButton
             AnchorSideLeft.Control = Panel1
@@ -661,11 +663,11 @@ object MainForm: TMainForm
       Left = 0
       Height = 575
       Top = 0
-      Width = 170
+      Width = 185
       Align = alLeft
       BevelOuter = bvNone
       ClientHeight = 575
-      ClientWidth = 170
+      ClientWidth = 185
       TabOrder = 2
       object lvFiles: TListView
         AnchorSideLeft.Control = LeftPanel
@@ -676,13 +678,13 @@ object MainForm: TMainForm
         Left = 0
         Height = 544
         Top = 0
-        Width = 170
+        Width = 185
         Anchors = [akTop, akLeft, akRight, akBottom]
         AutoWidthLastColumn = True
         Columns = <        
           item
             Caption = 'File name'
-            Width = 166
+            Width = 181
           end>
         HideSelection = False
         PopupMenu = FilesPopupMenu
@@ -705,6 +707,20 @@ object MainForm: TMainForm
         AutoSize = True
         BorderSpacing.Top = 6
         TabOrder = 1
+      end
+      object btnInfo: TButton
+        AnchorSideLeft.Control = btnExtractSelected
+        AnchorSideLeft.Side = asrBottom
+        AnchorSideTop.Control = btnExtractSelected
+        Left = 125
+        Height = 25
+        Top = 550
+        Width = 56
+        AutoSize = True
+        BorderSpacing.Left = 8
+        Caption = 'Info...'
+        OnClick = btnInfoClick
+        TabOrder = 2
       end
     end
   end

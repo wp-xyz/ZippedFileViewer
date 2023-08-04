@@ -25,7 +25,7 @@ uses
 
 
 const
-  BGRABitmapVersion = 11030100;
+  BGRABitmapVersion = 11050400;
 
   function BGRABitmapVersionStr: string;
 
@@ -120,7 +120,11 @@ type
     {** Scalable Vector Graphic, vectorial, read-only as raster }
     ifSvg,
     {** Lossless or lossy compression using V8 algorithm (need libwebp library) }
-    ifWebP);
+    ifWebP,
+    {** Lossless or lossy compression using Avif algorithm (need libavif library) }
+    ifAvif
+    );
+
 
   {* Options when loading an image }
   TBGRALoadingOption = (
@@ -384,6 +388,9 @@ type
     function GetFontPixelMetric: TFontPixelMetric; virtual; abstract;
     function GetFontPixelMetricF: TFontPixelMetricF; virtual;
     function FontExists(AName: string): boolean; virtual; abstract;
+
+    {** Checks if any text would be visible using the specified color }
+    function TextVisible(const AColor: TBGRAPixel): boolean; virtual;
 
     {** Returns the total size of the string provided using the current font.
         Orientation is not taken into account, so that the width is along the text }
@@ -840,6 +847,11 @@ begin
   end;
 end;
 
+function TBGRACustomFontRenderer.TextVisible(const AColor: TBGRAPixel): boolean;
+begin
+  result := AColor.alpha <> 0;
+end;
+
 function TBGRACustomFontRenderer.TextSizeF(sUTF8: string): TPointF;
 begin
   with TextSize(sUTF8) do
@@ -1234,6 +1246,20 @@ var
        and (moreMagic = 'WEBP') then
         inc(scores[ifWebP], 2);
     end;
+    if CompareMem(@magic[4], pansichar('ftyp'), 4) then  // maybe AVIF.
+    begin
+      AStream.Position:= streamStartPos+8;
+      setlength(moreMagic, 4);
+      if (AStream.Read(moreMagic[1],4) = 4) then
+      begin
+        if CompareMem(@moreMagic[1], pansichar('avif'), 4) then
+           inc(scores[ifAvif], 2)
+        else if CompareMem(@moreMagic[1], pansichar('avis'), 4) then
+           inc(scores[ifAvif], 2)
+        else if CompareMem(@moreMagic[1], pansichar('mif1'), 4) then
+           inc(scores[ifAvif], 2);
+        end;
+    end;
 
     AStream.Position := streamStartPos;
   end;
@@ -1296,7 +1322,9 @@ begin
   if (ext = '.oxo') then result := ifPhoxo else
   if (ext = '.svg') then result := ifSvg else
   if (ext = '.pbm') or (ext = '.pgm') or (ext = '.ppm') then result := ifPortableAnyMap else
-  if (ext = '.webp') then result := ifWebP;
+  if (ext = '.webp') then result := ifWebP else
+  if (ext = '.avif') then result := ifAvif;
+
 end;
 
 function SuggestImageExtension(AFormat: TBGRAImageFormat): string;

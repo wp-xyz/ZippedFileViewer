@@ -2075,6 +2075,7 @@ uses
 
 const
   MPH_VERSION = 'september 30, 2007; © markus stephany, vcl[at]mirkes[dot]de';
+  INVALID_HANDLE_VALUE = -1;
 
 resourcestring
 

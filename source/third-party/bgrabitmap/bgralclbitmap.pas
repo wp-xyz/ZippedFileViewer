@@ -30,6 +30,8 @@ type
     procedure DataDrawOpaque(ACanvas: TCanvas; ARect: TRect; AData: Pointer;
       ALineOrder: TRawImageLineOrder; AWidth, AHeight: integer); override;
     procedure GetImageFromCanvas(CanvasSource: TCanvas; x, y: integer); override;
+    function MakeBitmapCopy(BackgroundColor: TColor; AMasked: boolean = False): TBitmap; override;
+    procedure AssignToBitmap(ADestination: TBitmap);
     procedure LoadFromDevice({%H-}DC: HDC); override;
     procedure LoadFromDevice({%H-}DC: HDC; {%H-}ARect: TRect); override;
     procedure TakeScreenshotOfPrimaryMonitor; override;
@@ -68,7 +70,7 @@ type
 
 implementation
 
-uses BGRAText, LCLType, LCLIntf, FPimage;
+uses BGRAText, LCLType, LCLIntf, FPimage, IntfGraphics;
 
 { TBitmapTracker }
 
@@ -164,6 +166,43 @@ begin
       inc(psrc);
     end else
       currentBit := currentBit shr 1;
+    dec(count);
+  end;
+end;
+
+procedure CopyFrom16Bit(psrc: PByte; pdest: PBGRAPixel; count: Int32or64; sourcePixelSize: PtrInt; defaultOpacity: byte);
+var r,g,b: byte;
+begin
+  while count > 0 do
+  begin
+    b := PWord(psrc)^ and 31;
+    g := (PWord(psrc)^ shr 5) and 63;
+    r := PWord(psrc)^ shr 11;
+    pdest^.blue := (b shl 3) + (b shr 2);
+    pdest^.green := (g shl 2) + (g shr 4);
+    pdest^.red := (r shl 3) + (r shr 2);
+    pdest^.alpha := defaultOpacity;
+    inc(psrc,sourcePixelSize);
+    inc(pdest);
+    dec(count);
+  end;
+end;
+
+procedure CopyFrom16BitSwap(psrc: PByte; pdest: PBGRAPixel; count: Int32or64; sourcePixelSize: PtrInt; defaultOpacity: byte);
+var r,g,b: byte; w: word;
+begin
+  while count > 0 do
+  begin
+    w := swap(PWord(psrc)^);
+    b := w and 31;
+    g := (w shr 5) and 63;
+    r := w shr 11;
+    pdest^.blue := (b shl 3) + (b shr 2);
+    pdest^.green := (g shl 2) + (g shr 4);
+    pdest^.red := (r shl 3) + (r shr 2);
+    pdest^.alpha := defaultOpacity;
+    inc(psrc,sourcePixelSize);
+    inc(pdest);
     dec(count);
   end;
 end;
@@ -460,13 +499,13 @@ begin
   begin
     if ((ARawImage.Description.BitsPerPixel and 7) <> 0) then
     begin
-      result := FormatError(IntToStr(ARawImage.Description.Depth) + 'bit found but multiple of 8bit expected');
+      result := FormatError(IntToStr(ARawImage.Description.BitsPerPixel) + 'bit per pixel found but multiple of 8bit expected');
       exit;
     end;
 
-    if (ARawImage.Description.BitsPerPixel < 24) then
+    if (ARawImage.Description.BitsPerPixel < 16) then
     begin
-      result := FormatError(IntToStr(ARawImage.Description.Depth) + 'bit found but at least 24bit expected');
+      result := FormatError(IntToStr(ARawImage.Description.BitsPerPixel) + 'bit per pixel found but at least 16bit expected');
       exit;
     end;
 
@@ -481,6 +520,18 @@ begin
       exit;
     end;
 
+    if ARawImage.Description.BitsPerPixel = 16 then
+    begin
+      if ARawImage.Description.Depth <> 16 then
+      begin
+        result := FormatError(IntToStr(ARawImage.Description.Depth) + 'bit depth found but 16bit expected');
+        exit;
+      end;
+      if (ARawImage.Description.ByteOrder = riboLSBFirst) xor {$IFDEF ENDIAN_BIG}true{$ELSE}false{$ENDIF} then
+        copyProc := @CopyFrom16Bit
+      else
+        copyProc := @CopyFrom16BitSwap;
+    end else
     //channels are in ARGB order
     if (ARawImage.Description.BitsPerPixel >= 32) and
        (ARawImage.Description.AlphaPrec = 8) and
@@ -929,11 +980,72 @@ begin
   DataDrawOpaqueImplementation(ACanvas, ARect, AData, ALineOrder, AWidth, AHeight);
 end;
 
-procedure TBGRALCLBitmap.GetImageFromCanvas(CanvasSource: TCanvas; x, y: integer
-  );
+procedure TBGRALCLBitmap.GetImageFromCanvas(CanvasSource: TCanvas; x, y: integer);
 begin
   DiscardBitmapChange;
   GetImageFromCanvasImplementation(self,CanvasSource,x,y);
+end;
+
+function TBGRALCLBitmap.MakeBitmapCopy(BackgroundColor: TColor; AMasked: boolean): TBitmap;
+var
+  maskImg: TLazIntfImage;
+  y, x: Integer;
+  p: PBGRAPixel;
+  bmpHandle, maskHandle: HBitmap;
+begin
+  {$IFDEF LINUX}
+  if (BackgroundColor = clNone) and not HasSemiTransparentPixels then
+  begin
+    BackgroundColor := clSilver;
+    AMasked := true;
+  end;
+  {$ENDIF}
+  if BackgroundColor = clNone then
+  begin
+    result := TBitmap.Create;
+    AssignToBitmap(result);
+  end else
+  begin
+    Result:=inherited MakeBitmapCopy(BackgroundColor, AMasked);
+    if AMasked and HasTransparentPixels then
+    begin
+      maskImg := TLazIntfImage.Create(Width, Height, [riqfMono]);
+      try
+        maskImg.CreateData;
+        for y := 0 to Height-1 do
+        begin
+          p := ScanLine[y];
+          for x := 0 to Width-1 do
+          begin
+            if p^.alpha >= 128 then
+              maskImg.Colors[x,y] := colBlack
+            else
+              maskImg.Colors[x,y] := colWhite;
+            inc(p);
+          end;
+        end;
+        maskImg.CreateBitmaps(bmpHandle, maskHandle, true);
+        result.Masked := true;
+        result.MaskHandle:= bmpHandle;
+      finally
+        maskImg.Free;
+      end;
+    end;
+  end;
+end;
+
+procedure TBGRALCLBitmap.AssignToBitmap(ADestination: TBitmap);
+var
+  stream: TStream;
+begin
+  stream := TMemoryStream.Create;
+  try
+    Bitmap.SaveToStream(stream);
+    stream.Position:= 0;
+    ADestination.LoadFromStream(stream);
+  finally
+    stream.Free;
+  end;
 end;
 
 procedure TBGRALCLBitmap.LoadFromDevice(DC: HDC);
@@ -981,16 +1093,22 @@ procedure TBGRALCLBitmap.TakeScreenshotOfPrimaryMonitor;
 var primaryDC: THandle;
 begin
   primaryDC := LCLIntf.GetDC(0);
-  LoadFromDevice(primaryDC);
-  LCLIntf.ReleaseDC(0, primaryDC);
+  try
+    LoadFromDevice(primaryDC);
+  finally
+    LCLIntf.ReleaseDC(0, primaryDC);
+  end;
 end;
 
 procedure TBGRALCLBitmap.TakeScreenshot(ARect: TRect);
 var primaryDC: THandle;
 begin
   primaryDC := LCLIntf.GetDC(0);
-  LoadFromDevice(primaryDC, ARect);
-  LCLIntf.ReleaseDC(0, primaryDC);
+  try
+    LoadFromDevice(primaryDC, ARect);
+  finally
+    LCLIntf.ReleaseDC(0, primaryDC);
+  end;
 end;
 
 end.

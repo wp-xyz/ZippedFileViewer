@@ -26,6 +26,7 @@ type
     ApplicationProperties: TApplicationProperties;
     btnLoad: TButton;
     btnExtractSelected: TButton;
+    btnInfo: TButton;
     cbFileName: TComboBox;
     ImageList: TImageList;
     lvFiles: TListView;
@@ -48,6 +49,7 @@ type
     procedure acExtractSelectedExecute(Sender: TObject);
     procedure acExtractSelectedUpdate(Sender: TObject);
     procedure btnBrowseClick(Sender: TObject);
+    procedure btnInfoClick(Sender: TObject);
     procedure btnLoadClick(Sender: TObject);
     procedure cbFileNameKeyPress(Sender: TObject; var Key: char);
     procedure cbFileNameSelect(Sender: TObject);
@@ -100,7 +102,8 @@ implementation
 uses
   StrUtils, LCLType, LCLIntf,
   IniFiles,
-  laz2_xmlread, laz2_xmlwrite, laz2_dom;
+  laz2_xmlread, laz2_xmlwrite, laz2_dom,
+  zfvInfo;
 
 const
   APP_NAME = 'Zipped File Viewer';
@@ -160,6 +163,25 @@ begin
     finally
       Free;
     end;
+end;
+
+procedure TMainForm.btnInfoClick(Sender: TObject);
+var
+  F: TInfoForm;
+  zipEntry: TFullZipFileEntry;
+begin
+  if lvFiles.ItemIndex = -1 then
+    exit;
+  zipEntry := FUnzipper.Entries[lvFiles.ItemIndex];
+  if zipEntry = nil then
+    exit;
+  F := TInfoForm.Create(nil);
+  try
+    F.ZipFileEntry := zipEntry;
+    F.ShowModal;
+  finally
+    F.Free;
+  end;
 end;
 
 procedure TMainForm.acExtractSelectedExecute(Sender: TObject);
@@ -274,7 +296,7 @@ end;
 
 procedure TMainForm.FormActivate(Sender: TObject);
 begin
-  btnBrowse.Constraints.MinWidth := btnBrowse.Height + 8;
+  btnBrowse.Constraints.MinWidth := btnBrowse.Height + 4;
 end;
 
 procedure TMainForm.FormCreate(Sender: TObject);

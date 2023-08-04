@@ -1384,8 +1384,10 @@ end;
 procedure TBGRACanvas2D.lineStyle(const AValue: array of single);
 var a: array of single;
   i: Integer;
+  isClear: boolean;
 begin
-  if odd(length(AValue)) then
+  isClear := (length(AValue) = 1) and (AValue[0] = 0);
+  if odd(length(AValue)) and not isClear then
   begin
     setlength(a, length(AValue)*2);
     for i := 0 to high(AValue) do
@@ -1926,10 +1928,9 @@ begin
 end;
 
 procedure TBGRACanvas2D.save;
-var cur: TBGRACanvasState2D;
 begin
-  cur := currentState.Duplicate;
-  StateStack.Add(cur);
+  StateStack.Add(currentState);
+  currentState := currentState.Duplicate;
 end;
 
 procedure TBGRACanvas2D.restore;

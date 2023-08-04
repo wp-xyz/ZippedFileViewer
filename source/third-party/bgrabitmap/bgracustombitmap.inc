@@ -217,7 +217,8 @@ type
 
   public
      constructor Create(AFPImage: TFPCustomImage); overload; virtual; abstract;
-     constructor Create(ABitmap: TBitmap; AUseTransparent: boolean = true); overload; virtual; abstract;
+     constructor Create(ABitmap: TBitmap); overload; virtual; abstract;
+     constructor Create(ABitmap: TBitmap; AUseTransparent: boolean); overload; virtual; abstract;
      constructor Create(AFilename: string); overload; virtual; abstract;
      constructor Create(AFilename: string; AIsUtf8Filename: boolean); overload; virtual; abstract;
      constructor Create(AFilename: string; AIsUtf8Filename: boolean; AOptions: TBGRALoadingOptions); overload; virtual; abstract;
@@ -502,7 +503,7 @@ type
      procedure DrawPart(ARect: TRect; ACanvas: TCanvas; x, y: integer; Opaque: boolean); overload; virtual;
      procedure DrawPart(ARect: TRect; ACanvas: TCanvas; ATargetRect: TRect; Opaque: boolean); overload; virtual;
      function GetPtrBitmap(Top,Bottom: Integer): TBGRACustomBitmap; virtual; abstract;
-     function MakeBitmapCopy(BackgroundColor: TColor): TBitmap; virtual; abstract;
+     function MakeBitmapCopy(BackgroundColor: TColor; AMasked: boolean = False): TBitmap; virtual; abstract;
 
      {BGRA bitmap functions}
      procedure CrossFade(ARect: TRect; Source1, Source2: IBGRAScanner; AFadePosition: byte; mode: TDrawMode = dmDrawWithTransparency); overload; virtual; abstract;

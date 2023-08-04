@@ -38,7 +38,7 @@
         <PackageName Value="LCL"/>
       </Item3>
     </RequiredPackages>
-    <Units Count="2">
+    <Units Count="3">
       <Unit0>
         <Filename Value="zippedfileviewer.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -51,6 +51,14 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="zfvMain"/>
       </Unit1>
+      <Unit2>
+        <Filename Value="zfvinfo.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="InfoForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="zfvInfo"/>
+      </Unit2>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

@@ -199,9 +199,9 @@ var
                         end;
   FontPixelMetricCount: integer;
   
-{$IFDEF BGRABITMAP_USE_MSEGUI}
+{$IF defined(BGRABITMAP_USE_MSEGUI)}
 {$i bgramsegui_text.inc}
-{$ELSE}
+{$ELSEIF defined(BGRABITMAP_USE_LCL)}
 procedure BitmapTextOut(ABitmap: TBitmap; ACoord: TPoint; AText: string);
 begin
   ABitmap.Canvas.Brush.Style := bsClear;
@@ -259,6 +259,31 @@ begin
   ABitmap.Canvas.Pen.Style := psClear;
   ABitmap.Canvas.FillRect(ARect);
 end;
+{$ELSE}
+procedure BitmapTextOut(ABitmap: TBitmap; ACoord: TPoint; AText: string);
+begin raise exception.Create('Not implemented') end;
+
+procedure BitmapTextOutAngle(ABitmap: TBitmap; ACoord: TPoint; AText: string; AOrientation: integer);
+begin raise exception.Create('Not implemented') end;
+
+procedure BitmapTextRect(ABitmap: TBitmap; ARect: TRect; ACoord: TPoint;
+  AText: string; const AStyle: TTextStyle);
+begin raise exception.Create('Not implemented') end;
+
+function BitmapTextExtent(ABitmap: TBitmap; AText: string): TSize;
+begin raise exception.Create('Not implemented') end;
+
+function BitmapTextExtentAngle(ABitmap: TBitmap; AText: string; AOrientation: integer): TSize;
+begin raise exception.Create('Not implemented') end;
+
+function BitmapTextFitInfo(ABitmap: TBitmap; AText: string; AMaxWidth: integer): integer;
+begin raise exception.Create('Not implemented') end;
+
+function BitmapTextFitInfoAngle(ABitmap: TBitmap; AText: string; AMaxWidth: integer; AOrientation: integer): integer;
+begin raise exception.Create('Not implemented') end;
+
+procedure BitmapFillRect(ABitmap: TBitmap; ARect: TRect; AColor: TColor);
+begin raise exception.Create('Not implemented') end;
 {$ENDIF}
 
 procedure ComputeFontVerticalBounds(text: string; font: TFont; out top, bottom, totalHeight: integer);
@@ -710,6 +735,10 @@ begin
     tempBmp := nil;
     try
       tempBmp := TBitmap.Create;
+      {$IFDEF BGRABITMAP_USE_MSEGUI}
+      tempBmp.Width := 1;
+      tempBmp.Height := 1;
+      {$ENDIF}
       tempBmp.Canvas.Font := Font;
       if Quality in[fqFineClearTypeBGR,fqFineClearTypeRGB,fqFineAntialiasing] then
       begin
@@ -1044,7 +1073,7 @@ var
   end;
 
 begin
-  if not SystemFontAvailable then exit;
+  if not SystemFontAvailable or ((c.alpha = 0) and (tex = nil)) then exit;
 
   if CustomAntialiasingLevel = 0 then
     CustomAntialiasingLevel:= FontAntialiasingLevel;
@@ -1149,7 +1178,7 @@ var
   tempLCL: TBitmap;
   {$ENDIF}
 begin
-  if not SystemFontAvailable then exit;
+  if not SystemFontAvailable or ((c.alpha = 0) and (tex = nil)) then exit;
 
   if CustomAntialiasingLevel = 0 then
     CustomAntialiasingLevel:= FontAntialiasingLevel;
@@ -1289,8 +1318,10 @@ begin
 end;
 
 function TBGRASystemFontRenderer.FontExists(AName: string): boolean;
+{$IFDEF LCL}
 var
   i: Integer;
+{$ENDIF}
 begin
   {$IFDEF LCL}
   for i := 0 to Screen.Fonts.Count-1 do
