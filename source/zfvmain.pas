@@ -8,7 +8,12 @@ uses
   LCLVersion,
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ComCtrls,
   ExtCtrls, Buttons, Menus, ActnList,
+  {$IFDEF ZIPPER}
   zipper,
+  {$ENDIF}
+  {$IFDEF ABBREVIA}
+  AbArcTyp, AbZipTyp, AbUnzper,
+  {$ENDIF}
   MPHexEditor,
   SynEdit, SynEditHighlighter,
   SynHighlighterXML, SynHighlighterCss, SynHighlighterHTML, SynHighlighterJScript,
@@ -61,7 +66,12 @@ type
     procedure PaintBoxPaint(Sender: TObject);
     procedure rbSizeChange(Sender: TObject);
   private
+    {$IFDEF ZIPPER}
     FUnzipper: TUnzipper;
+    {$ENDIF}
+    {$IFDEF ABBREVIA}
+    FUnzipper: TAbUnzipper;
+    {$ENDIF}
     FMaxHistory: Integer;
     FHighlighters: TFPList;
     FHexEditor: TMPHexEditor;
@@ -69,12 +79,15 @@ type
     FSVG: TBGRASvg;
     FOutFileName: String;
     procedure AddToHistory(const AFileName: String);
+    procedure DisplayStream(AStream: TStream);
 
+    {$IFDEF ZIPPER}
     procedure CreateOutZipViewerStreamHandler(Sender: TObject; var AStream: TStream; AItem: TFullZipFileEntry);
     procedure DoneOutZipViewerStreamHandler(Sender: TObject; var AStream: TStream; AItem: TFullZipFileEntry);
 
     procedure CreateOutZipFileStreamHandler(Sender: TObject; var AStream: TStream; AItem: TFullZipFileEntry);
     procedure DoneOutZipFileStreamHandler(Sender: TObject; var AStream: TStream; AItem: TFullZipFileEntry);
+    {$ENDIF}
 
     function RegisteredHighlighter(AClass: TSynCustomHighlighterClass): TSynCustomHighlighter;
 
@@ -168,11 +181,28 @@ end;
 procedure TMainForm.btnInfoClick(Sender: TObject);
 var
   F: TInfoForm;
+  {$IFDEF ZIPPER}
   zipEntry: TFullZipFileEntry;
+  {$ENDIF}
+  {$IFDEF ABBREVIA}
+//  fn: String;
+//  idx: Integer;
+  zipEntry: TAbZipItem;
+  {$ENDIF}
 begin
   if lvFiles.ItemIndex = -1 then
     exit;
-  zipEntry := FUnzipper.Entries[lvFiles.ItemIndex];
+  {$IFDEF ZIPPER}
+  zipEntry := TFullZipFileEntry(lvFiles.Items[lvFiles.ItemIndex].Data);
+  {$ENDIF}
+  {$IFDEF ABBREVIA}
+  {
+  fn := lvFiles.Items[lvFiles.ItemIndex].Caption;
+  idx := FUnzipper.FindFile(fn);
+  zipEntry := FUnzipper.Items[idx];
+  }
+  zipEntry := TAbZipItem(lvFiles.Items[lvFiles.ItemIndex].Data);
+  {$ENDIF};
   if zipEntry = nil then
     exit;
   F := TInfoForm.Create(nil);
@@ -188,6 +218,7 @@ procedure TMainForm.acExtractSelectedExecute(Sender: TObject);
 var
   dlg: TSaveDialog;
   fn: String;
+  stream: TMemoryStream;
 begin
   if lvFiles.Selected = nil then
     exit;
@@ -202,9 +233,19 @@ begin
     if dlg.Execute then
     begin
       FOutFilename := ExpandFileName(dlg.FileName);
+      {$IFDEF ZIPPER}
       FUnzipper.OnCreateStream := @CreateOutZipFileStreamHandler;
       FUnzipper.OnDoneStream := @DoneOutZipFileStreamHandler;
       FUnzipper.UnzipFile(fn);
+      {$ENDIF}
+      {$IFDEF ABBREVIA}
+      stream := TMemoryStream.Create;
+      try
+        FUnzipper.ExtractToStream(fn, stream);
+      finally
+        stream.Free;
+      end;
+      {$ENDIF}
     end;
   finally
     dlg.Free;
@@ -238,6 +279,7 @@ begin
   Paintbox.Invalidate;
 end;
 
+{$IFDEF ZIPPER}
 // Handler for unzipping file from archive for viewer:
 // creates a stream for unzipped file.
 procedure TMainForm.CreateOutZipViewerStreamHandler(Sender: TObject; var AStream: TStream;
@@ -250,6 +292,29 @@ end;
 // Show xml stored in the unzipped stream
 procedure TMainForm.DoneOutZipViewerStreamHandler(Sender: TObject; var AStream: TStream;
   AItem: TFullZipFileEntry);
+begin
+  DisplayStream(AStream);
+
+  // Destroy the stream created by CreateOutZipStreamHandler
+  AStream.Free;
+end;
+
+// Handler for unzipping file from archive and saving to file:
+// creates a stream for unzipped file.
+procedure TMainForm.CreateOutZipFileStreamHandler(Sender: TObject; var AStream: TStream;
+  AItem: TFullZipFileEntry);
+begin
+  AStream := TFileStream.Create(FOutFileName, fmCreate);
+end;
+
+procedure TMainForm.DoneOutZipFileStreamHandler(Sender: TObject; var AStream: TStream;
+  AItem: TFullZipFileEntry);
+begin
+  AStream.Free;
+end;
+{$ENDIF}
+
+procedure TMainForm.DisplayStream(AStream: TStream);
 var
   ext: String;
 begin
@@ -275,23 +340,6 @@ begin
   end;
   if not pgImage.TabVisible then
     ClearImage;
-
-  // Destroy the stream created by CreateOutZipStreamHandler
-  AStream.Free;
-end;
-
-// Handler for unzipping file from archive and saving to file:
-// creates a stream for unzipped file.
-procedure TMainForm.CreateOutZipFileStreamHandler(Sender: TObject; var AStream: TStream;
-  AItem: TFullZipFileEntry);
-begin
-  AStream := TFileStream.Create(FOutFileName, fmCreate);
-end;
-
-procedure TMainForm.DoneOutZipFileStreamHandler(Sender: TObject; var AStream: TStream;
-  AItem: TFullZipFileEntry);
-begin
-  AStream.Free;
 end;
 
 procedure TMainForm.FormActivate(Sender: TObject);
@@ -363,19 +411,38 @@ var
 begin
   // Create unzipper component
   FUnzipper.Free;
+  {$IFDEF ZIPPER}
   FUnzipper := TUnzipper.Create;
-  FUnzipper.FileName := AFileName;
+  {$ENDIF}
+  {$IFDEF ABBREVIA}
+  FUnzipper := TAbUnzipper.Create(nil);
+  {$ENDIF}
 
   // Load directory contained in zip file into ListView
   try
+    FUnzipper.FileName := AFileName;
+    {$IFDEF ZIPPER}
     FUnzipper.Examine;
+    {$ENDIF}
     lvFiles.Items.BeginUpdate;
     try
       lvFiles.Items.Clear;
+      {$IFDEF ZIPPER}
       for i := 0 to FUnzipper.Entries.Count-1 do
+      {$ENDIF}
+      {$IFDEF ABBREVIA}
+      for i := 0 to FUnzipper.Count-1 do
+      {$ENDIF}
         with lvFiles.Items.Add do
         begin
+          {$IFDEF ZIPPER}
+          Data := FUnzipper.Entries[i];
           Caption := FUnzipper.Entries[i].ArchiveFileName;
+          {$ENDIF}
+          {$IFDEF ABBREVIA}
+          Data := FUnzipper.Items[i];
+          Caption := FUnzipper.Items[i].FileName;
+          {$ENDIF}
           ImageIndex := IMG_INDEX_TEXT;
           if Caption[Length(Caption)] = '/' then
             ImageIndex := IMG_INDEX_FOLDER
@@ -408,14 +475,26 @@ end;
 procedure TMainForm.lvFilesClick(Sender: TObject);
 var
   fn: String;
+  stream: TMemoryStream;
 begin
   if lvFiles.Selected = nil then
     exit;
 
+  fn := lvFiles.Selected.Caption;
+  {$IFDEF ZIPPER}
   FUnzipper.OnCreateStream := @CreateOutZipViewerStreamHandler;
   FUnzipper.OnDoneStream := @DoneOutZipViewerStreamHandler;
-  fn := lvFiles.Selected.Caption;
   FUnzipper.UnzipFile(fn);
+  {$ENDIF}
+  {$IFDEF ABBREVIA}
+  stream := TMemoryStream.Create;
+  try
+    FUnzipper.ExtractToStream(fn, stream);
+    DisplayStream(stream);
+  finally
+    stream.Free;
+  end;
+  {$ENDIF}
 end;
 
 procedure TMainForm.PaintBoxPaint(Sender: TObject);

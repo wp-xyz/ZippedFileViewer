@@ -69,7 +69,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir);third-party"/>
-      <OtherUnitFiles Value="third-party\bgrabitmap;third-party\extrasyn;third-party\mphexeditor"/>
+      <OtherUnitFiles Value="third-party\abbrevia\source;third-party\bgrabitmap;third-party\extrasyn;third-party\mphexeditor;third-party\zipper"/>
       <UnitOutputDirectory Value="..\ppu\lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>
@@ -82,6 +82,13 @@
         </Win32>
       </Options>
     </Linking>
+    <Other>
+      <CustomOptions Value="-dZIPPER"/>
+      <OtherDefines Count="2">
+        <Define0 Value="ZIPPER"/>
+        <Define1 Value="ABBREVIA"/>
+      </OtherDefines>
+    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions Count="6">
