@@ -1,7 +1,7 @@
 object MainForm: TMainForm
-  Left = 506
+  Left = 507
   Height = 619
-  Top = 211
+  Top = 206
   Width = 1151
   AllowDropFiles = True
   Caption = 'Zipped File Viewer'
@@ -98,9 +98,9 @@ object MainForm: TMainForm
       Height = 575
       Top = 0
       Width = 949
-      ActivePage = pgImage
+      ActivePage = pgText
       Align = alClient
-      TabIndex = 2
+      TabIndex = 0
       TabOrder = 1
       object pgText: TTabSheet
         Caption = 'Text'
@@ -659,6 +659,35 @@ object MainForm: TMainForm
           end
         end
       end
+      object pgInfo: TTabSheet
+        Caption = 'Info'
+        ClientHeight = 547
+        ClientWidth = 941
+        object ValueList: TValueListEditor
+          Left = 6
+          Height = 535
+          Top = 6
+          Width = 929
+          Align = alClient
+          AlternateColor = 16579836
+          BorderSpacing.Around = 6
+          DefaultColWidth = 200
+          FixedCols = 0
+          ParentShowHint = False
+          RowCount = 2
+          ShowHint = True
+          TabOrder = 0
+          Options = [goFixedVertLine, goFixedHorzLine, goHorzLine, goDrawFocusSelected, goColSizing, goRowSelect, goAlwaysShowEditor, goThumbTracking, goTruncCellHints, goCellEllipsis]
+          TitleCaptions.Strings = (
+            'Item'
+            'Value'
+          )
+          ColWidths = (
+            200
+            725
+          )
+        end
+      end
     end
     object LeftPanel: TPanel
       Left = 0
@@ -709,20 +738,6 @@ object MainForm: TMainForm
         AutoSize = True
         BorderSpacing.Top = 6
         TabOrder = 1
-      end
-      object btnInfo: TButton
-        AnchorSideLeft.Control = btnExtractSelected
-        AnchorSideLeft.Side = asrBottom
-        AnchorSideTop.Control = btnExtractSelected
-        Left = 125
-        Height = 25
-        Top = 550
-        Width = 56
-        AutoSize = True
-        BorderSpacing.Left = 8
-        Caption = 'Info...'
-        OnClick = btnInfoClick
-        TabOrder = 2
       end
     end
   end

@@ -7,9 +7,9 @@ interface
 uses
   LCLVersion,
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ComCtrls,
-  ExtCtrls, Buttons, Menus, ActnList,
+  ExtCtrls, Buttons, Menus, ActnList, ValEdit,
   {$IFDEF ZIPPER}
-  zipper,
+  zstream, zipper,
   {$ENDIF}
   {$IFDEF ABBREVIA}
   AbArcTyp, AbZipTyp, AbUnzper,
@@ -31,7 +31,6 @@ type
     ApplicationProperties: TApplicationProperties;
     btnLoad: TButton;
     btnExtractSelected: TButton;
-    btnInfo: TButton;
     cbFileName: TComboBox;
     ImageList: TImageList;
     lvFiles: TListView;
@@ -50,11 +49,12 @@ type
     pgText: TTabSheet;
     pgHex: TTabSheet;
     pgImage: TTabSheet;
+    pgInfo: TTabSheet;
     TextViewer: TSynEdit;
+    ValueList: TValueListEditor;
     procedure acExtractSelectedExecute(Sender: TObject);
     procedure acExtractSelectedUpdate(Sender: TObject);
     procedure btnBrowseClick(Sender: TObject);
-    procedure btnInfoClick(Sender: TObject);
     procedure btnLoadClick(Sender: TObject);
     procedure cbFileNameKeyPress(Sender: TObject; var Key: char);
     procedure cbFileNameSelect(Sender: TObject);
@@ -95,6 +95,7 @@ type
     procedure ClearImage;
     procedure LoadFile(const AFileName: String);
     function ShowImage(AStream: TStream; AExtension: String): Boolean;
+    procedure ShowInfo();
     procedure ShowText(AStream: TStream; AExtension: String);
     procedure ShowXML(AStream: TStream);
 
@@ -114,10 +115,8 @@ implementation
 {$R *.lfm}
 
 uses
-  StrUtils, LCLType, LCLIntf,
-  IniFiles,
-  laz2_xmlread, laz2_xmlwrite, laz2_dom,
-  zfvInfo;
+  StrUtils, LCLType, LCLIntf, IniFiles, TypInfo,
+  laz2_xmlread, laz2_xmlwrite, laz2_dom;
 
 const
   APP_NAME = 'Zipped File Viewer';
@@ -155,6 +154,97 @@ begin
       end;
 end;
 
+function AttributesToStr(Attr: LongWord): String;
+begin
+  Result := '';
+  if Attr and $01 <> 0 then
+    Result := Result + ', read-only';
+  if Attr and $02 <> 0 then
+    Result := result + ', hidden';
+  if Attr and $04 <> 0 then
+    Result := Result + ', system file';
+  if Attr and $08 <> 0 then
+    Result := Result + ', volume ID';
+  if Attr and $10 <> 0 then
+    Result := Result + ', directory';
+  if Attr and $02 <> 0 then
+    Result := Result + ', archive';
+  if Result <> '' then
+    Delete(Result, 1, 2);
+end;
+
+function BitFlagsToStr(ABitFlags: Word): String;
+begin
+  Result := '';
+  if ABitFlags and %0000000000000001 <> 0 then
+    Result := Result + ', encrypted';
+  if ABitFlags and %0000000000000110 <> 0 then
+    Result := Result + ', compression option';
+  if ABitFlags and %000000000001000 <> 0 then
+    Result := Result + ', data descriptor';
+  if ABitFlags and %0000000000010000 <> 0 then
+    Result := Result + ', enhanced deflation';
+  if ABitFlags and %0000000000100000 <> 0 then
+    Result := Result + ', compressed patched data';
+  if ABitFlags and %0000000001000000 <> 0 then
+    Result := Result + ', strong encryption';
+  if ABitFlags and %0000100000000000 <> 0 then
+    Result := Result + ', language encoding';
+  if ABitFlags and %0010000000000000 <> 0 then
+    Result := Result + ', mask header values';
+  if Length(Result) > 0 then
+    Delete(Result, 1, 2);
+  if Result = '' then
+    Result := 'no bit flags';
+  Result := Format('%d (%s)', [ABitFlags, Result]);
+end;
+
+function CompressionMethodToStr(AMethod: Word): String;
+begin
+  case AMethod of
+    00: Result := 'no compression';
+    01: Result := 'shrunk';
+    02: Result := 'reduced with compression factor 1';
+    03: Result := 'reduced with compression factor 2';
+    04: Result := 'reduced with compression factor 3';
+    05: Result := 'reduced with compression factor 4';
+    06: Result := 'imploded';
+    07: Result := 'reserved';
+    08: Result := 'deflated';
+    09: Result := 'enhanced deflated';
+    10: Result := 'PKWare DCL imploded';
+    11: Result := 'reserved';
+    12: Result := 'compressed using BZIP2';
+    13: Result := 'reserved';
+    14: Result := 'LZMA';
+    15..17: Result := 'reserved';
+    18: Result := 'compressed using IBM TERSE';
+    19: Result := 'IBM LZ77 z';
+    98: Result := 'PPMd version I, Rev 1';
+   else Result := 'unknown';
+  end;
+  Result := Format('%d (%s)', [AMethod, Result]);
+end;
+
+function OSToStr(OS: Byte): String;
+begin
+  {$IFDEF ZIPPER}
+  case OS of
+    OS_FAT: Result := 'MS-DOS or OS/2 (FAT/VFAT/FAT32)';
+    OS_UNIX: Result := 'UNIX';
+    OS_OS2: Result := 'OS/2 (HPFS)';
+    OS_NTFS: Result := 'NTFS';
+    OS_VFAT: Result := 'VFAT';
+    OS_OSX: Result := 'OSX';
+    else Result := '(unknown)';
+  end;
+  Result := Format('%d (%s)', [OS, Result]);
+  {$ENDIF}
+  {$IFDEF ABBREVIA}
+  Result := '***';
+  {$ENDIF}
+end;
+
 { TMainForm }
 
 procedure TMainForm.AddToHistory(const AFileName: String);
@@ -177,42 +267,6 @@ begin
     finally
       Free;
     end;
-end;
-
-procedure TMainForm.btnInfoClick(Sender: TObject);
-var
-  F: TInfoForm;
-  {$IFDEF ZIPPER}
-  zipEntry: TFullZipFileEntry;
-  {$ENDIF}
-  {$IFDEF ABBREVIA}
-//  fn: String;
-//  idx: Integer;
-  zipEntry: TAbZipItem;
-  {$ENDIF}
-begin
-  if lvFiles.ItemIndex = -1 then
-    exit;
-  {$IFDEF ZIPPER}
-  zipEntry := TFullZipFileEntry(lvFiles.Items[lvFiles.ItemIndex].Data);
-  {$ENDIF}
-  {$IFDEF ABBREVIA}
-  {
-  fn := lvFiles.Items[lvFiles.ItemIndex].Caption;
-  idx := FUnzipper.FindFile(fn);
-  zipEntry := FUnzipper.Items[idx];
-  }
-  zipEntry := TAbZipItem(lvFiles.Items[lvFiles.ItemIndex].Data);
-  {$ENDIF};
-  if zipEntry = nil then
-    exit;
-  F := TInfoForm.Create(nil);
-  try
-    F.ZipFileEntry := zipEntry;
-    F.ShowModal;
-  finally
-    F.Free;
-  end;
 end;
 
 procedure TMainForm.acExtractSelectedExecute(Sender: TObject);
@@ -325,6 +379,9 @@ begin
   AStream.Position := 0;
   FHexEditor.LoadFromStream(AStream);
 
+  // Display info page
+  ShowInfo;
+
   // Try to load as xml
   try
     ShowXML(AStream);
@@ -348,7 +405,7 @@ begin
   if not FActivated then
   begin
     FActivated := true;
-    LeftPanel.Constraints.MinWidth := btnInfo.Left + btnInfo.Width;
+    LeftPanel.Constraints.MinWidth := btnExtractSelected.Left + btnExtractSelected.Width;
     btnBrowse.Constraints.MinWidth := btnBrowse.Height + 4;
   end;
 end;
@@ -692,6 +749,88 @@ begin
     FImage := TBGRABitmap.Create(AStream);
   Paintbox.Invalidate;
   Result := true;
+end;
+
+procedure TMainForm.ShowInfo;
+var
+  {$IFDEF ZIPPER}
+  zipEntry: TFullZipFileEntry;
+  {$ENDIF}
+  {$IFDEF ABBREVIA}
+//  fn: String;
+//  idx: Integer;
+  zipEntry: TAbZipItem;
+  {$ENDIF}
+begin
+  if lvFiles.ItemIndex = -1 then
+    exit;
+  {$IFDEF ZIPPER}
+  zipEntry := TFullZipFileEntry(lvFiles.Items[lvFiles.ItemIndex].Data);
+  {$ENDIF}
+  {$IFDEF ABBREVIA}
+  {
+  fn := lvFiles.Items[lvFiles.ItemIndex].Caption;
+  idx := FUnzipper.FindFile(fn);
+  zipEntry := FUnzipper.Items[idx];
+  }
+  zipEntry := TAbZipItem(lvFiles.Items[lvFiles.ItemIndex].Data);
+  {$ENDIF};
+  if zipEntry = nil then
+    exit;
+
+  ValueList.BeginUpdate;
+  try
+    ValueList.RowCount := 1;
+
+    {$IFDEF ZIPPER}
+    ValueList.InsertRow('Archive File Name', zipEntry.ArchiveFileName, true);
+    ValueList.InsertRow('  UTF8', zipEntry.UTF8ArchiveFileName, true);
+    ValueList.InsertRow('Disk File Name', zipEntry.DiskFileName, true);
+    ValueList.InsertRow('  UTF8', zipEntry.UTF8DiskFileName, true);
+    ValueList.InsertRow('Date/Time', DateTimeToStr(zipEntry.DateTime), true);
+    ValueList.InsertRow('Uncompressed Size', Format('%.0n Bytes', [1.0*zipEntry.Size]), true);
+    ValueList.InsertRow('Compressed Size', Format('%.0n Bytes', [1.0*zipEntry.CompressedSize]), true);
+    if zipEntry.Size <> 0 then
+      ValueList.InsertRow('Compression Ratio', FormatFloat('0%', (1.0-zipEntry.CompressedSize/zipEntry.Size)*100), true);
+    ValueList.InsertRow('Compression Method', CompressionMethodToStr(zipEntry.CompressMethod), true);
+    ValueList.InsertRow('Compression Level', GetEnumName(TypeInfo(TCompressionLevel), Integer(zipEntry.CompressionLevel)), true);
+    ValueList.InsertRow('OS', OSToStr(zipEntry.OS), true);
+    ValueList.InsertRow('Attributes', AttributesToStr(zipEntry.Attributes), true);
+    ValueList.InsertRow('Bit Flags', BitFlagsToStr(zipEntry.BitFlags), true);
+    ValueList.InsertRow('CRC32', Format('$%.8x', [zipEntry.CRC32]), true);
+    {$ENDIF}
+
+    {$IFDEF ABBREVIA}
+    ValueList.InsertRow('Archive File Name', zipEntry.FileName, true);
+    ValueList.InsertRow('Disk File Name', zipEntry.DiskFileName, true);
+    ValueList.InsertRow('Raw File Name', zipEntry.RawFileName, true);
+    ValueList.InsertRow('Stored Path', zipEntry.StoredPath, true);
+    ValueList.InsertRow('Last Modification Date/Time', DateTimeToStr(zipEntry.LastModTimeAsDateTime), true);
+    ValueList.InsertRow('Item is encrypted', BoolToStr(zipEntry.IsEncrypted, true), true);
+    ValueList.InsertRow('Item is directory', BoolToStr(zipEntry.IsDirectory, true), true);
+    ValueList.InsertRow('Compression Method', GetEnumName(TypeInfo(TAbZipCompressionMethod), Integer(zipEntry.CompressionMethod)), true);
+    ValueList.InsertRow('Uncompressed Size', Format('%.0n Bytes', [1.0*zipEntry.UncompressedSize]), true);
+    ValueList.InsertRow('Compressed Size', Format('%.0n Bytes', [1.0*zipEntry.CompressedSize]), true);
+    ValueList.InsertRow('Compression Ratio', FormatFloat('0%', zipEntry.CompressionRatio), true);
+    ValueList.InsertRow('CRC32', Format('$%.8x', [zipEntry.CRC32]), true);
+    ValueList.InsertRow('Deflation Option', GetEnumName(TypeInfo(TAbZipDeflationOption), Integer(zipEntry.DeflationOption)), true);
+    ValueList.InsertRow('Dictionary Size', GetEnumName(TypeInfo(TAbZipDictionarySize), Integer(zipEntry.DictionarySize)), true);
+    ValueList.InsertRow('Disk Number Start', IntToStr(zipEntry.DiskNumberStart), true);
+    ValueList.InsertRow('External File Attributes', AttributesToStr(zipEntry.ExternalFileAttributes), true);
+    ValueList.InsertRow('Extra Field', 'Count: ' + IntToStr(zipEntry.Extrafield.Count), true);
+    ValueList.InsertRow('File Comment', zipEntry.FileComment, true);
+    ValueList.InsertRow('Host OS', GetEnumName(TypeInfo(TAbZipHostOS), Integer(zipEntry.HostOS)), true);
+    ValueList.InsertRow('General-Purpose Bit Flags', BitFlagsToStr(zipEntry.GeneralPurposeBitFlag), true);
+    ValueList.InsertRow('LFH Extra Field', 'Count: ' + IntToStr(zipEntry.LFHExtrafield.Count), true);
+    ValueList.InsertRow('Native File Attributes', AttributesToStr(zipEntry.NativeFileAttributes), true);
+    ValueList.InsertRow('Version Made By', IntToStr(zipEntry.VersionMadeBy), true);
+    ValueList.InsertRow('Version Needed To Extract', IntToStr(zipEntry.VersionNeededToExtract), true);
+    {$ENDIF}
+
+    ValueList.Row := 1;
+  finally
+    ValueList.EndUpdate;
+  end;
 end;
 
 procedure TMainForm.ShowText(AStream: TStream; AExtension: String);
