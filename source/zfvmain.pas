@@ -262,6 +262,7 @@ begin
       begin
         cbFileName.Items.Insert(0, FileName);
         cbFileName.ItemIndex := 0;
+        cbFileName.Text := FileName;
         LoadFile(cbFileName.Text);
       end;
     finally
@@ -532,6 +533,7 @@ begin
   TextViewer.Lines.Clear;
   FHexEditor.Clear;
   ClearImage;
+  ValueList.Clear;
 end;
 
 // Unzip clicked file to a stream as defined by CreateOutZipStreamHandler

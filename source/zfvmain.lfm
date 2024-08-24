@@ -7,11 +7,11 @@ object MainForm: TMainForm
   Caption = 'Zipped File Viewer'
   ClientHeight = 619
   ClientWidth = 1151
+  LCLVersion = '3.99.0.0'
   OnActivate = FormActivate
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnDropFiles = FormDropFiles
-  LCLVersion = '3.99.0.0'
   object pnlFileName: TPanel
     Left = 6
     Height = 26
@@ -36,9 +36,9 @@ object MainForm: TMainForm
       Anchors = [akTop, akLeft, akRight]
       DropDownCount = 24
       ItemHeight = 15
+      TabOrder = 0
       OnKeyPress = cbFileNameKeyPress
       OnSelect = cbFileNameSelect
-      TabOrder = 0
     end
     object btnLoad: TButton
       AnchorSideTop.Control = pnlFileName
@@ -53,8 +53,8 @@ object MainForm: TMainForm
       AutoSize = True
       BorderSpacing.Right = 2
       Caption = 'Open'
-      OnClick = btnLoadClick
       TabOrder = 1
+      OnClick = btnLoadClick
     end
     object btnBrowse: TSpeedButton
       AnchorSideTop.Control = btnLoad
@@ -98,9 +98,9 @@ object MainForm: TMainForm
       Height = 575
       Top = 0
       Width = 949
-      ActivePage = pgText
+      ActivePage = pgInfo
       Align = alClient
-      TabIndex = 0
+      TabIndex = 3
       TabOrder = 1
       object pgText: TTabSheet
         Caption = 'Text'
@@ -571,6 +571,8 @@ object MainForm: TMainForm
             object SynGutterMarks1: TSynGutterMarks
               Width = 24
               MouseActions = <>
+              MaxExtraMarksColums = 0
+              Options = [sgmoDeDuplicateMarksOnOverflow]
             end
             object SynGutterLineNumber1: TSynGutterLineNumber
               Width = 15
@@ -639,9 +641,9 @@ object MainForm: TMainForm
             Width = 82
             Caption = 'Original size'
             Checked = True
-            OnChange = rbSizeChange
             TabOrder = 1
             TabStop = True
+            OnChange = rbSizeChange
           end
           object rbScaledSize: TRadioButton
             AnchorSideLeft.Control = rbOrigSize
@@ -654,8 +656,8 @@ object MainForm: TMainForm
             Width = 74
             BorderSpacing.Left = 12
             Caption = 'Scaled size'
-            OnChange = rbSizeChange
             TabOrder = 0
+            OnChange = rbSizeChange
           end
         end
       end
